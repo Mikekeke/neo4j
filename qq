@@ -1,0 +1,7 @@
+MERGE (r1:Reaction {id:1, name:'fuse'})
+ MERGE (c1:Catalyst {id:1, smiles:'cat smile 1', name:'cat smiles 1') 
+ MERGE (m1:Molecule {id:1, smiles:'mol smiles 1', iupac:'mol iupac 1'}) 
+ MERGE (m2:Molecule {id:2, smiles:'mol smiles 2', iupac:'mol iupac 2'}) 
+ MERGE (c1)-[:ACCELERATE {temperature:'99.0', pressure:'100.0'}]->(r1) 
+ MERGE (m1)-[:REAGENT_IN]->(r1) 
+ MERGE (m2)-[:REAGENT_IN]->(r1)

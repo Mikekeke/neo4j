@@ -29,13 +29,13 @@ boltCfg = def {user = "neo4j", password = "15197"}
 main :: IO ()
 main = do
     putStrLn "connect"
-    -- putStrLn (T.unpack qs)
-    pipe <- connect boltCfg
-    let (alias, q, params) = toPreQuery m1
-    -- run pipe (query_ qs)
-    run pipe (uncurry queryP $ protoQ pr1 )
-    -- mapM_ (run pipe . toQuery) [m1,m2]
-    -- mapM_ (run pipe . toQuery) [r1]
-    putStrLn "close"
-    close pipe
-    return ()
+    -- -- putStrLn (T.unpack qs)
+    -- pipe <- connect boltCfg
+    -- let (alias, q, params) = toPreQuery m1
+    -- -- run pipe (query_ qs)
+    -- run pipe (uncurry queryP $ protoQ pr1 )
+    -- -- mapM_ (run pipe . toQuery) [m1,m2]
+    -- -- mapM_ (run pipe . toQuery) [r1]
+    -- putStrLn "close"
+    -- close pipe
+    -- return ()
