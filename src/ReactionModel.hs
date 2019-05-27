@@ -15,6 +15,8 @@ module ReactionModel where
     import Text.Printf
     import Data.Typeable
     import Control.Applicative
+    import Control.Monad
+    import Control.Arrow ((***))
 
     data Molecule = Molecule {moleculeId :: Int, moleculeSmiles :: String, moleculeIupac :: String} deriving Show
     data Reaction = Reaction {reactionId :: Int, reactionName :: String} deriving Show
@@ -97,14 +99,17 @@ module ReactionModel where
     data ProtoReaction = ProtoReaction {mols :: [Molecule], r :: Reaction, c :: Catalyst} deriving Show
     pr1 = ProtoReaction [m1,m2] r1 c1
 
-    
-    protoQ (ProtoReaction ms r c) = do
+    encTup (a,b) = (encode a, encode b)
+
+    -- protoQ (ProtoReaction ms r c) = do
+    protoQ (ReactionModel ms r accs prods) = do
         let molQs = fmap encode ms
             reagentQ = encode REAGENT_IN
             reactionQ = encode r
-            catalInQ = encode c
-        molRelations <- traverse (\a -> mkRelationA a reagentQ reactionQ) molQs
-        accRelation  <- mkRelationA catalInQ (encode a1) reactionQ
-        -- return $ fmap merge relations ++ fmap merge molQs ++ [merge reactionQ]
-        return $ T.intercalate (pack " ") $ 
-            merge reactionQ : merge catalInQ : fmap merge molQs ++ fmap merge (accRelation : molRelations)       
+            res = fmap (encode *** encode) accs
+        undefined
+        -- molRelations <- traverse (\a -> mkRelationA a reagentQ reactionQ) molQs
+        -- accRelation  <- mkRelationA catalInQ (encode a1) reactionQ
+        -- -- return $ fmap merge relations ++ fmap merge molQs ++ [merge reactionQ]
+        -- return $ T.intercalate (pack " ") $ 
+        --     merge reactionQ : merge catalInQ : fmap merge molQs ++ fmap merge (accRelation : molRelations)       
