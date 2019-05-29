@@ -38,10 +38,12 @@ module ReactionModel where
     m3 = Molecule 3 "mol smiles 3" "mol iupac 3"
     r1 = Reaction 1 "fuse"
     c1 = Catalyst 1 "cat smile 1" (Just "cat smiles 1")
+    c2 = Catalyst 2 "cat smile 2" (Just "cat smiles 2")
     p1 = PRODUCT_FROM 2.0
     a1 = ACCELERATE 99.0 100
+    a2 = ACCELERATE 10.0 13
 
-    rm1 = ReactionModel [m1, m2] r1 [(a1, c1)] [(p1, m3)]
+    rm1 = ReactionModel [m1, m2] r1 [(a1, c1), (a2, c2)] [(p1, m3)]
 
     data CQType = NodeQuery | RelationQuery | Binded
 
@@ -94,7 +96,7 @@ module ReactionModel where
         encode = const $ plain "-[:REAGENT_IN]->"
 
     instance CanCypher ACCELERATE RelationQuery where
-        encode = plain . liftA3 (printf "-[:'%s' {temperature:'%f', pressure:'%f'}]->") (show . typeOf) temperature pressure
+        encode = plain . liftA3 (printf "-[:%s {temperature:'%f', pressure:'%f'}]->") (show . typeOf) temperature pressure
 
     data ProtoReaction = ProtoReaction {mols :: [Molecule], r :: Reaction, c :: Catalyst} deriving Show
     pr1 = ProtoReaction [m1,m2] r1 c1
@@ -106,10 +108,12 @@ module ReactionModel where
         let molQs = fmap encode ms
             reagentQ = encode REAGENT_IN
             reactionQ = encode r
-            res = fmap (encode *** encode) accs
-        undefined
-        -- molRelations <- traverse (\a -> mkRelationA a reagentQ reactionQ) molQs
-        -- accRelation  <- mkRelationA catalInQ (encode a1) reactionQ
-        -- -- return $ fmap merge relations ++ fmap merge molQs ++ [merge reactionQ]
-        -- return $ T.intercalate (pack " ") $ 
-        --     merge reactionQ : merge catalInQ : fmap merge molQs ++ fmap merge (accRelation : molRelations)       
+            accCat = fmap (encode *** encode) accs
+        molRelations <- traverse (\a -> mkRelationA a reagentQ reactionQ) molQs
+        accReactions <- traverse (\(acc, cat) -> mkRelationA cat acc reactionQ) accCat
+        return $ T.intercalate (pack " ") $ 
+        -- return $ -- mapM_ putStrLn $ maybe [] (fmap T.unpack) $ (protoQ rm1)
+            merge reactionQ : fmap merge molQs 
+            ++ fmap (merge . snd) accCat   
+            ++ fmap merge  molRelations   
+            ++ fmap merge accReactions  
