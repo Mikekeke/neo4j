@@ -17,11 +17,12 @@ module ReactionModel where
     import Control.Applicative
     import Control.Monad
     import Control.Arrow ((***))
+    import Control.Monad.State
 
     data Molecule = Molecule {moleculeId :: Int, moleculeSmiles :: String, moleculeIupac :: String} deriving Show
     data Reaction = Reaction {reactionId :: Int, reactionName :: String} deriving Show
     data Catalyst = Catalyst {catalystId :: Int, catalystSmiles :: String, catalystName :: Maybe String} deriving Show
-    data PRODUCT_FROM = PRODUCT_FROM {amount :: Float} deriving Show
+    data PRODUCT_FROM = PRODUCT_FROM {amount :: Float} deriving (Show, Typeable)
     data ACCELERATE = ACCELERATE {temperature :: Float, pressure :: Float} deriving (Show, Typeable)
 
     data REAGENT_IN = REAGENT_IN
@@ -36,6 +37,7 @@ module ReactionModel where
     m1 = Molecule 1 "mol smiles 1" "mol iupac 1"
     m2 = Molecule 2 "mol smiles 2" "mol iupac 2"
     m3 = Molecule 3 "mol smiles 3" "mol iupac 3"
+    m4 = Molecule 4 "mol smiles 4" "mol iupac 4"
     r1 = Reaction 1 "fuse"
     c1 = Catalyst 1 "cat smile 1" (Just "cat smiles 1")
     c2 = Catalyst 2 "cat smile 2" (Just "cat smiles 2")
@@ -43,7 +45,7 @@ module ReactionModel where
     a1 = ACCELERATE 99.0 100
     a2 = ACCELERATE 10.0 13
 
-    rm1 = ReactionModel [m1, m2] r1 [(a1, c1), (a2, c2)] [(p1, m3)]
+    rm1 = ReactionModel [m1, m2] r1 [(a1, c1), (a2, c2)] [(p1, m3), (p1,m4)]
 
     data CQType = NodeQuery | RelationQuery | Binded
 
@@ -98,10 +100,12 @@ module ReactionModel where
     instance CanCypher ACCELERATE RelationQuery where
         encode = plain . liftA3 (printf "-[:%s {temperature:'%f', pressure:'%f'}]->") (show . typeOf) temperature pressure
 
-    data ProtoReaction = ProtoReaction {mols :: [Molecule], r :: Reaction, c :: Catalyst} deriving Show
-    pr1 = ProtoReaction [m1,m2] r1 c1
+    instance CanCypher PRODUCT_FROM RelationQuery where
+        encode = plain . liftA2 (printf "<-[:%s {amount:'%f'}]-") (show . typeOf) amount
 
-    encTup (a,b) = (encode a, encode b)
+    data ProtoReaction = ProtoReaction {mols :: [Molecule], r :: Reaction, c :: Catalyst} deriving Show
+
+    -- encTup (a,b) = (encode a, encode b)
 
     -- protoQ (ProtoReaction ms r c) = do
     protoQ (ReactionModel ms r accs prods) = do
@@ -109,11 +113,29 @@ module ReactionModel where
             reagentQ = encode REAGENT_IN
             reactionQ = encode r
             accCat = fmap (encode *** encode) accs
+            molProd = fmap (encode *** encode) prods
         molRelations <- traverse (\a -> mkRelationA a reagentQ reactionQ) molQs
         accReactions <- traverse (\(acc, cat) -> mkRelationA cat acc reactionQ) accCat
+        prodAndMol <- traverse (\(product, molecule) -> mkRelationA (encode molecule) (encode product) reactionQ) prods
         return $ T.intercalate (pack " ") $ 
         -- return $ -- mapM_ putStrLn $ maybe [] (fmap T.unpack) $ (protoQ rm1)
             merge reactionQ : fmap merge molQs 
             ++ fmap (merge . snd) accCat   
+            ++ fmap (merge . snd) molProd   
             ++ fmap merge  molRelations   
             ++ fmap merge accReactions  
+            ++ fmap merge prodAndMol  
+    
+
+    encodeS :: Monad m => Molecule -> StateT [Text] m (PreQuery NodeQuery)
+    encodeS m = do
+        let encoded = encode m
+        modify (merge encoded :)
+        return encoded
+
+
+    encodeDump :: [(PRODUCT_FROM, Molecule)] -> StateT [Text] Maybe ()
+    encodeDump ps = do
+        let mols :: [Molecule]
+            mols = fmap snd ps
+        undefined

@@ -25,6 +25,7 @@ dependencies:
 - data-default
 - text
 - containers
+- mtl
 
 library:
   source-dirs: src
