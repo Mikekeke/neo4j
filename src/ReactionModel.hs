@@ -30,8 +30,8 @@ module ReactionModel where
     data ReactionModel = ReactionModel {
         reagents    :: [Molecule]
         , reaction  :: Reaction
-        , catalysts :: [(ACCELERATE, Catalyst)]
-        , products  :: [(PRODUCT_FROM, Molecule)]
+        , catalysts :: [(Catalyst, ACCELERATE)]
+        , products  :: [(Molecule, PRODUCT_FROM)]
     } deriving Show
 
     m1 = Molecule 1 "mol smiles 1" "mol iupac 1"
@@ -45,7 +45,7 @@ module ReactionModel where
     a1 = ACCELERATE 99.0 100
     a2 = ACCELERATE 10.0 13
 
-    rm1 = ReactionModel [m1, m2] r1 [(a1, c1), (a2, c2)] [(p1, m3), (p1,m4)]
+    rm1 = ReactionModel [m1, m2] r1 [(c1, a1), (c2, a2)] [(m3, p1), (m4, p1)]
 
     data CQType = NodeQuery | RelationQuery | Binded
 
@@ -62,8 +62,7 @@ module ReactionModel where
 
     merge :: PreQuery a -> Text
     merge = mappend "MERGE " . query
-    mkRelation :: PreQuery NodeQuery -> PreQuery RelationQuery -> PreQuery NodeQuery -> Text
-    mkRelation a r b = undefined
+
     mkRelationA :: PreQuery NodeQuery -> PreQuery RelationQuery -> PreQuery NodeQuery -> Maybe (PreQuery Binded)
     mkRelationA a r b = do 
         a1 <- aliasToNode a
@@ -108,17 +107,18 @@ module ReactionModel where
     -- encTup (a,b) = (encode a, encode b)
 
     -- protoQ (ProtoReaction ms r c) = do
-    protoQ (ReactionModel ms r accs prods) = do
+
+
+    protoQ (ReactionModel ms rctn accs prods) = do
         let molQs = fmap encode ms
             reagentQ = encode REAGENT_IN
-            reactionQ = encode r
+            reactionQ = encode rctn
             accCat = fmap (encode *** encode) accs
             molProd = fmap (encode *** encode) prods
         molRelations <- traverse (\a -> mkRelationA a reagentQ reactionQ) molQs
-        accReactions <- traverse (\(acc, cat) -> mkRelationA cat acc reactionQ) accCat
-        prodAndMol <- traverse (\(product, molecule) -> mkRelationA (encode molecule) (encode product) reactionQ) prods
+        accReactions <- traverse (\(cat, acc) -> mkRelationA cat acc reactionQ) accCat
+        prodAndMol <- traverse (\(moleculeQ, productQ) -> mkRelationA moleculeQ productQ reactionQ) molProd
         return $ T.intercalate (pack " ") $ 
-        -- return $ -- mapM_ putStrLn $ maybe [] (fmap T.unpack) $ (protoQ rm1)
             merge reactionQ : fmap merge molQs 
             ++ fmap (merge . snd) accCat   
             ++ fmap (merge . snd) molProd   
