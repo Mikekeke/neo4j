@@ -54,7 +54,9 @@ module ReactionModel where
     instance Show (PreQuery a) where
         show (PreQuery a q) = printf "PreQuery {alias :: %s, query :: %s}" (show $ T.unpack <$> a) (T.unpack q)
 
-    aliased = PreQuery . Just . T.pack
+    aliased :: String -> String -> PreQuery a
+    aliased a s = PreQuery (Just .T.pack $ a) (T.pack s)
+    plain :: String -> PreQuery a
     plain = PreQuery Nothing . T.pack
 
     aliasToNode :: PreQuery NodeQuery -> Maybe Text
@@ -79,19 +81,19 @@ module ReactionModel where
     instance CanCypher Molecule NodeQuery where
         encode (Molecule _id sm iu) =  aliased alias query where 
             alias = 'm': show _id
-            query = T.pack $ printf "(%s:Molecule {id:%d, smiles:'%s', iupac:'%s'})" alias _id sm iu
+            query = printf "(%s:Molecule {id:%d, smiles:'%s', iupac:'%s'})" alias _id sm iu
 
     instance CanCypher Reaction NodeQuery where
         encode (Reaction _id name) = aliased alias query where 
             alias = 'r':show _id 
-            query = T.pack $ printf "(%s:Reaction {id:%d, name:'%s'})" alias _id name
+            query = printf "(%s:Reaction {id:%d, name:'%s'})" alias _id name
 
     instance CanCypher Catalyst NodeQuery where
         encode (Catalyst _id sm name) = aliased alias query where 
             alias = 'c':show _id
             _name :: String
             _name = maybe "" (printf ", name:'%s'") name
-            query = T.pack $ printf "(%s:Catalyst {id:%d, smiles:'%s'%s})" alias _id sm _name
+            query =  printf "(%s:Catalyst {id:%d, smiles:'%s'%s})" alias _id sm _name
 
     instance CanCypher REAGENT_IN RelationQuery where
         encode = const $ plain "-[:REAGENT_IN]->"
@@ -109,7 +111,7 @@ module ReactionModel where
     -- protoQ (ProtoReaction ms r c) = do
 
 
-    protoQ (ReactionModel ms rctn accs prods) = do
+    reqctionToQuery (ReactionModel ms rctn accs prods) = do
         let molQs = fmap encode ms
             reagentQ = encode REAGENT_IN
             reactionQ = encode rctn
@@ -120,8 +122,8 @@ module ReactionModel where
         prodAndMol <- traverse (\(moleculeQ, productQ) -> mkRelationA moleculeQ productQ reactionQ) molProd
         return $ T.intercalate (pack " ") $ 
             merge reactionQ : fmap merge molQs 
-            ++ fmap (merge . snd) accCat   
-            ++ fmap (merge . snd) molProd   
+            ++ fmap (merge . fst) accCat   
+            ++ fmap (merge . fst) molProd   
             ++ fmap merge  molRelations   
             ++ fmap merge accReactions  
             ++ fmap merge prodAndMol  

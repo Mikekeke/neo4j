@@ -5,9 +5,8 @@ module Main where
 import Database.Bolt
 import Data.Default (Default (..))
 import Control.Exception
-import Data.Text as T (unpack, append)
+import Data.Text as T (unpack, append, Text)
 
-import Model
 import ReactionModel
 
 
@@ -29,13 +28,12 @@ boltCfg = def {user = "neo4j", password = "15197"}
 main :: IO ()
 main = do
     putStrLn "connect"
-    -- -- putStrLn (T.unpack qs)
-    -- pipe <- connect boltCfg
-    -- let (alias, q, params) = toPreQuery m1
-    -- -- run pipe (query_ qs)
-    -- run pipe (uncurry queryP $ protoQ pr1 )
-    -- -- mapM_ (run pipe . toQuery) [m1,m2]
-    -- -- mapM_ (run pipe . toQuery) [r1]
-    -- putStrLn "close"
-    -- close pipe
-    -- return ()
+    pipe <- connect boltCfg
+    let r = (traverse query_ (reqctionToQuery rm1))
+    let r2 = (traverse query_ (Nothing :: Maybe T.Text))
+    -- let r = undefined
+    run pipe r
+    run pipe r2
+    putStrLn "close"
+    close pipe
+    return ()
